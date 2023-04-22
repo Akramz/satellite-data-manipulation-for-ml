@@ -1,21 +1,33 @@
-# Creating a Remote Sensing ML dataset
+# Common Steps: Create a Remote Sensing dataset for Segmentation
 
-The goal of this guide is to outline the necessary steps to create a remote sensing dataset for ML applications (without going into ML). `TorchGeo` can be directly used on the datasets created by this guide, but it is not required.
+Our goal is to outline the necessary steps to create a remote sensing dataset for ML applications (without going into ML).
 
-Our approach is to demonstrate through an example. The problem we suggest has the following characteristics:
+Let us demonstrate the steps by going through a problem example:
 
 - We want to detect **buildings** in Africa using public satellite imagery.
-- As input, we will use [Sentinel-2](https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a) imagery.
-- As output, we will use Google's [Open Buildings](https://sites.research.google/open-buildings/) dataset.
+- As **input**, we will use [Sentinel-2](https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a) imagery.
+- As **output**, we will use Google's [Open Buildings](https://sites.research.google/open-buildings/) dataset (ML-produced).
 
-The final output we want consist of the following files:
+The final output we want consists of 4 files ready to be used for computer vision:
 
-- `X_train.tif`: A 3-band (RGB) GeoTIFF file containing the training input Sentinel-2 imagery.
-- `y_train.tif`: A 1-band GeoTIFF file containing the training output Open Buildings labels as a mask.
-- `X_val.tif`: A 3-band (RGB) GeoTIFF file containing the validation input Sentinel-2 imagery.
-- `y_val.tif`: A 1-band GeoTIFF file containing the validation output Open Buildings labels as a mask.
+- `X_train.tif`: A 3-band (RGB) `GeoTIFF` file containing the training input Sentinel-2 imagery.
+- `y_train.tif`: A 1-band `GeoTIFF` file containing the training output Open Buildings labels as a mask.
+- `X_val.tif`: A 3-band (RGB) `GeoTIFF` file containing the validation input Sentinel-2 imagery.
+- `y_val.tif`: A 1-band `GeoTIFF` file containing the validation output Open Buildings labels as a mask.
 
-## Step 1: Define the Region of Interest (ROI)
+We can subsequently use [`TorchGeo`](https://github.com/microsoft/torchgeo) on the produced files to sample CNN patches (`X <-> y`) for training.
+
+## Step 0: Prepare the Environment
+
+```Bash
+conda create -n ml_datasets python=3.10
+conda activate ml_datasets
+conda install -c conda-forge mamba
+mamba install pip
+pip install -r requirements.txt
+```
+
+## [Step 1](https://github.com/Akramz/satellite-data-manipulation-for-ml/blob/main/00_city_to_roi.py): Define the Region of Interest (ROI)
 
 We set the overall region of interest to be **Nairobi, Kenya**.
 
@@ -61,7 +73,7 @@ roi = city_bounding_box("Nairobi")
 gpd.GeoDataFrame(geometry=[roi], crs="EPSG:4326").to_file("./data/roi.geojson")
 ```
 
-## Step 2: Filter & Acquire the tile image for the ROI
+## [Step 2](https://github.com/Akramz/satellite-data-manipulation-for-ml/blob/main/02_filter_building_polygons.py): Filter & Acquire the tile image for the ROI
 
 We filter the Sentinel-2 imagery to get the least-cloudy tile for the ROI:
 
@@ -116,7 +128,7 @@ else:
     print(f"Error {response.status_code}: Unable to download the TIFF file")
 ```
 
-## Step 3: Acquire & filter the Open Buildings polygons for the ROI
+## [Step 3](https://github.com/Akramz/satellite-data-manipulation-for-ml/blob/main/02_filter_building_polygons.py): Acquire & filter the Open Buildings polygons for the ROI
 
 Next, we need to download the Open Buildings dataset for a cell that contains Nairobi then filter the polygons further to only include those that intersect with the ROI:
 
@@ -150,7 +162,7 @@ data = {"y": [1]*len(nairobi_buildings), "geometry": nairobi_buildings}
 gpd.GeoDataFrame(data=data, crs="EPSG:4326").to_file("./data/nairobi_buildings.geojson")
 ```
 
-## Step 4: Create the `train` & `validation` ROI Polygons using QGIS
+## [Step 4](https://www.qgis.org/en/site/forusers/download.html): Create the `train` & `validation` ROI Polygons using QGIS
 
 We create two polygons in `QGIS` to define the `train` & `validation` regions of interest:
 
@@ -159,7 +171,7 @@ We create two polygons in `QGIS` to define the `train` & `validation` regions of
 3. Repeat the same for the `validation` region of interest.
 4. Save the layers.
 
-## Step 5: Crop the tile to export `X_train.tif` & `X_val.tif`
+## [Step 5](https://github.com/Akramz/satellite-data-manipulation-for-ml/blob/main/04_crop_tile.py): Crop the tile to export `X_train.tif` & `X_val.tif`
 
 Now we need to crop the original tile to the `train` & `validation` regions of interest and create the `X_train.tif` & `X_val.tif` files:
 
@@ -235,7 +247,7 @@ crop_tile_save(intput_path, train_roi, xtrain_path)
 crop_tile_save(intput_path, val_roi, xval_path)
 ```
 
-## Step 5: Rasterize the Open Buildings polygons to export `y_train.tif` & `y_val.tif`
+## [Step 6](https://github.com/Akramz/satellite-data-manipulation-for-ml/blob/main/05_rasterize_polygons.py): Rasterize the Open Buildings polygons to export `y_train.tif` & `y_val.tif`
 
 We create a function to rasterize the Open Buildings polygons to create the `y_train.tif` & `y_val.tif` files:
 
