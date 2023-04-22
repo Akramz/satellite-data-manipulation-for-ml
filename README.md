@@ -1,4 +1,4 @@
-# Common Steps: Create a Remote Sensing dataset for Segmentation
+# Steps: Creating Remote Sensing datasets for Segmentation
 
 Our goal is to outline the necessary steps to create a remote sensing dataset for ML applications (without going into ML).
 
